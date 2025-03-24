@@ -5,7 +5,8 @@ using namespace std;
 
 ObjectTracker::ObjectTracker()
 {
-    tracker = TrackerKCF::create();
+    // tracker = TrackerKCF::create();
+    tracker = cv::legacy::TrackerMOSSE::create();
 }
 
 bool ObjectTracker::initialize(Mat &frame, Rect trackingBox)
@@ -19,7 +20,9 @@ bool ObjectTracker::initialize(Mat &frame, Rect trackingBox)
         trackingBox.y + trackingBox.height <= frame.rows) {
 
         this->trackingBox = trackingBox;
-        tracker->init(frame, trackingBox);
+        cv::Rect2d trackingBoxDouble(trackingBox);
+
+        tracker->init(frame, trackingBoxDouble);
         return true;
     }
     
@@ -30,7 +33,9 @@ bool ObjectTracker::update(Mat& frame) {
     if (frame.empty() || trackingBox.width <= 0 || trackingBox.height <= 0) {
         return false;
     }
-    return tracker->update(frame, trackingBox);
+    cv::Rect2d trackingBoxDouble(trackingBox);
+    return tracker->update(frame, trackingBoxDouble);
+
 }
 
 void ObjectTracker::drawBoundingBox(Mat &frame)

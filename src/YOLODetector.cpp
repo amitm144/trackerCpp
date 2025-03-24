@@ -12,10 +12,19 @@ YOLODetector::YOLODetector(const string &modelConfig, const string &modelWeights
     {
         throw runtime_error("Error: Failed to load YOLO model!");
     }
-    net.setPreferableBackend(dnn::DNN_BACKEND_OPENCV);
-    net.setPreferableTarget(dnn::DNN_TARGET_CPU);
+
+    // Enable GPU acceleration if CUDA is available
+    if (cv::cuda::getCudaEnabledDeviceCount() > 0) {
+        net.setPreferableBackend(dnn::DNN_BACKEND_CUDA);
+        net.setPreferableTarget(dnn::DNN_TARGET_CUDA);
+    } else {
+        net.setPreferableBackend(dnn::DNN_BACKEND_OPENCV);
+        net.setPreferableTarget(dnn::DNN_TARGET_CPU);
+    }
+
     loadClassNames(classFile);
 }
+
 
 void YOLODetector::loadClassNames(const string &classFile)
 {
@@ -51,7 +60,7 @@ vector<pair<Rect, string>> YOLODetector::detectVehicles(const Mat &frame)
         inputFrame = frame.clone();
     }
 
-    dnn::blobFromImage(inputFrame, blob, 1 / 255.0, Size(416, 416), true, false);
+    dnn::blobFromImage(inputFrame, blob, 1 / 255.0, Size(320, 320), true, false);
     net.setInput(blob);
 
     vector<Mat> outputs;
@@ -66,7 +75,7 @@ vector<pair<Rect, string>> YOLODetector::postprocess(const Mat &frame, const vec
     vector<int> classIds;
     vector<float> confidences;
 
-    const float CONFIDENCE_THRESHOLD = 0.7; 
+    const float CONFIDENCE_THRESHOLD = 0.5; 
     const float NMS_THRESHOLD = 0.4;       
 
     for (const auto &output : outputs)
