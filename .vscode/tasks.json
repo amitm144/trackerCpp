@@ -1,0 +1,19 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Build C++ with OpenCV",
+            "type": "shell",
+            "command": "sh",
+            "args": [
+                "-c",
+                "export PKG_CONFIG_PATH=$(brew --prefix opencv)/lib/pkgconfig:$PKG_CONFIG_PATH && g++ -std=c++17 -Iinclude -o tracking_app src/*.cpp $(pkg-config --cflags --libs opencv4)"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": ["$gcc"]
+        }
+    ]
+}
