@@ -14,6 +14,7 @@ public:
     VideoHandler(const std::string& filename);
     bool getFrame(cv::Mat& frame);
     void writeFrame(const cv::Mat& frame);
+    double getFPS();
     ~VideoHandler();
 };
 

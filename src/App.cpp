@@ -1,63 +1,47 @@
 #include "App.h"
+#include "SpeedEstimator.h"
+#include "RoadSelector.h"
 #include <iostream>
 
 using namespace cv;
 using namespace std;
 
 void App::run(const string &filename, const string &modelConfig,
-              const string &modelWeights, const string &classFile)
+              const string &modelWeights, const string &classFile,
+              const vector<Point2f>& roadPoints)
 {
     try
     {
         VideoHandler videoHandler(filename);
         YOLODetector detector(modelConfig, modelWeights, classFile);
 
-        int frameCount = 0;
-        const int PROCESS_EVERY_N_FRAMES = 5;
+        SpeedEstimator speedEstimator(videoHandler.getFPS(), roadPoints); // ✅ Uses road boundaries
 
-        const int MAX_TRACKED_OBJECTS = 100;
         vector<ObjectTracker> trackerList;
-
         Mat frame;
-        bool isTracking = false;
 
         while (videoHandler.getFrame(frame))
         {
-            if (frame.empty())
-                continue;
+            if (frame.empty()) continue;
 
-            frameCount++;
-            if (frameCount % PROCESS_EVERY_N_FRAMES != 0)
-            {
-                videoHandler.writeFrame(frame); // Just save the frame without processing
-                continue;
-            }
-            // Detect vehicles in current frame
             vector<pair<Rect, string>> detectedObjects = detector.detectVehicles(frame);
 
-            // Define colors for each vehicle type
-            std::map<std::string, Scalar> vehicleColors = {
-                {"car", Scalar(0, 255, 0)},   // Green
-                {"truck", Scalar(255, 0, 0)}, // Blue
-                {"bus", Scalar(255, 0, 0)},   // Blue
-            };
-
-            for (const auto &obj : detectedObjects)
-            {
+            for (auto &obj : detectedObjects) {
                 Rect box = obj.first;
                 string class_name = obj.second;
-                Scalar color = vehicleColors.count(class_name) ? vehicleColors[class_name] : Scalar(255, 255, 255);
-                rectangle(frame, box, color, 4);
+
+                // ✅ Compute speed using the road boundaries
+                double speed = speedEstimator.calculateSpeed(box);
+
+                // ✅ Display speed on the original frame (no warping)
+                putText(frame, to_string(int(speed)) + " km/h",
+                        Point(box.x, box.y - 10), FONT_HERSHEY_SIMPLEX, 0.7,
+                        Scalar(0, 255, 255), 2);
+                
+                rectangle(frame, box, Scalar(0, 255, 0), 4);
             }
 
-            // Update all existing trackers
-            for (auto &tracker : trackerList)
-            {
-                tracker.update(frame);
-                tracker.drawBoundingBox(frame);
-            }
-
-            imshow("Video feed", frame);
+            imshow("Video Feed", frame);
             videoHandler.writeFrame(frame);
 
             if (waitKey(25) >= 0)

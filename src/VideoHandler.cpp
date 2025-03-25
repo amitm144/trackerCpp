@@ -21,6 +21,10 @@ bool VideoHandler::getFrame(Mat& frame) {
 void VideoHandler::writeFrame(const Mat& frame) {
     output.write(frame);
 }
+double VideoHandler::getFPS() {
+    return video.get(CAP_PROP_FPS);
+}
+
 
 VideoHandler::~VideoHandler() {
     output.release();
