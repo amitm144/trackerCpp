@@ -9,9 +9,21 @@ VideoHandler::VideoHandler(const string& filename) {
     if (!video.isOpened()) {
         throw runtime_error("Error opening video file");
     }
+    
+    // Get video properties
     frameWidth = video.get(CAP_PROP_FRAME_WIDTH);
     frameHeight = video.get(CAP_PROP_FRAME_HEIGHT);
-    output.open("output.avi", VideoWriter::fourcc('M', 'J', 'P', 'G'), 120, Size(frameWidth, frameHeight));
+    double fps = video.get(CAP_PROP_FPS);
+    
+    // Use the same FPS as the input video for the output
+    cout << "Input video FPS: " << fps << endl;
+    
+    // Open output video with the same frame rate as input
+    output.open("output.avi", VideoWriter::fourcc('M', 'J', 'P', 'G'), fps, Size(frameWidth, frameHeight));
+    
+    if (!output.isOpened()) {
+        throw runtime_error("Error creating output video file");
+    }
 }
 
 bool VideoHandler::getFrame(Mat& frame) {
@@ -19,12 +31,14 @@ bool VideoHandler::getFrame(Mat& frame) {
 }
 
 void VideoHandler::writeFrame(const Mat& frame) {
-    output.write(frame);
+    if (!frame.empty()) {
+        output.write(frame);
+    }
 }
+
 double VideoHandler::getFPS() {
     return video.get(CAP_PROP_FPS);
 }
-
 
 VideoHandler::~VideoHandler() {
     output.release();
