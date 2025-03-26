@@ -13,19 +13,17 @@ void mouseCallback(int event, int x, int y, int flags, void* userdata) {
     Mat temp = displayFrame.clone();
     
     // Draw existing reference points and horizontal lines
-    if (!referenceLines.empty()) {
-        for (size_t i = 0; i < referenceLines.size(); i++) {            
-            // Draw horizontal line through this point
-            line(temp, Point(0, referenceLines[i].y), 
-                 Point(temp.cols, referenceLines[i].y), 
-                 Scalar(0, 255, 0), 1);
-        }
-        
-        // Show distance label between lines
-        if (referenceLines.size() == 2) {
-            Point2f midPoint(temp.cols/2, (referenceLines[0].y + referenceLines[1].y)/2);
-            putText(temp, "21m", midPoint, FONT_HERSHEY_SIMPLEX, 0.7, Scalar(0, 255, 0), 1);
-        }
+    for (const auto& point : referenceLines) {            
+        // Draw horizontal line through this point
+        line(temp, Point(0, point.y), 
+             Point(temp.cols, point.y), 
+             Scalar(0, 255, 0), 1);
+    }
+    
+    // Show distance label between lines
+    if (referenceLines.size() == 2) {
+        Point2f midPoint(temp.cols/2, (referenceLines[0].y + referenceLines[1].y)/2);
+        putText(temp, "21m", midPoint, FONT_HERSHEY_SIMPLEX, 0.7, Scalar(0, 255, 0), 1);
     }
     
     // Handle click event
@@ -53,7 +51,7 @@ vector<Point2f> RoadSelector::selectReferenceLines(const string& videoPath) {
     }
     
     namedWindow(windowName);
-    setMouseCallback(windowName, mouseCallback, NULL);
+    setMouseCallback(windowName, mouseCallback, nullptr);
     imshow(windowName, displayFrame);
 
     // Wait for both points to be selected

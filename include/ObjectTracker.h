@@ -3,14 +3,13 @@
 
 #include <opencv2/opencv.hpp>
 #include <opencv2/tracking.hpp>
-#include <opencv2/tracking/tracking_legacy.hpp> // Legacy tracking (MOSSE)
+#include <opencv2/tracking/tracking_legacy.hpp>
 
 class ObjectTracker
 {
 private:
-    cv::Ptr<cv::legacy::TrackerMOSSE> tracker; // Use legacy namespace
-    // cv::Ptr<cv::Tracker> tracker;
-    cv::Rect trackingBox;
+    cv::Ptr<cv::legacy::TrackerMOSSE> tracker;
+    cv::Rect2d trackingBox;
 
 public:
     ObjectTracker();

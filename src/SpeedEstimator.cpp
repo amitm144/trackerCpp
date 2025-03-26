@@ -1,5 +1,4 @@
 #include "SpeedEstimator.h"
-#include <iostream>
 
 using namespace cv;
 using namespace std;
@@ -8,11 +7,6 @@ SpeedEstimator::SpeedEstimator(double frameRate, const vector<Point2f>& referenc
     fps = frameRate;
     referenceDistance = 21.0; // 21 meters between lines
     this->referenceLines = referenceLines;
-
-}
-
-bool SpeedEstimator::hasVehicleCrossedLine(const Point2f& pos, const Point2f& linePoint, bool isVertical) {
-    return (pos.y - linePoint.y) * (vehicles[0].lastPosition.y - linePoint.y) <= 0;
 }
 
 void SpeedEstimator::processVehicle(int id, const Point2f& position, int currentFrame) {
@@ -58,7 +52,6 @@ void SpeedEstimator::processVehicle(int id, const Point2f& position, int current
 
     vehicle.lastPosition = position;
 }
-
 
 double SpeedEstimator::getSpeed(int id) const {
     auto it = vehicles.find(id);

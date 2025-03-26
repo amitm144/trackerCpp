@@ -1,6 +1,7 @@
 #include "App.h"
 #include <iostream>
 #include <map>
+#include <algorithm>
 
 using namespace cv;
 using namespace std;
@@ -30,17 +31,18 @@ void App::run(const string &filename, const string &modelConfig,
         map<int, VehicleTracker> vehicles;
         int nextId = 0;
         int frameCount = 0;
-        const int FRAME_SKIP = 2;
+        constexpr int FRAME_SKIP = 2;
 
         Mat frame;
         while (videoHandler.getFrame(frame))
         {
             if (frame.empty())
                 continue;
+                
             frameCount++;
 
-            bool processThisFrame = (frameCount % FRAME_SKIP == 0);
-            if (processThisFrame)
+            // Only process every FRAME_SKIP frames
+            if (frameCount % FRAME_SKIP == 0)
             {
                 // Detect vehicles in the frame
                 vector<pair<Rect, string>> detections = detector.detectVehicles(frame);
@@ -50,7 +52,7 @@ void App::run(const string &filename, const string &modelConfig,
 
                 for (const auto &detection : detections)
                 {
-                    Rect box = detection.first;
+                    const Rect& box = detection.first;
 
                     // Find closest match based on IOU
                     int bestId = -1;
@@ -91,11 +93,7 @@ void App::run(const string &filename, const string &modelConfig,
                     }
                     else
                     {
-                        VehicleTracker newVehicle;
-                        newVehicle.bbox = box;
-                        newVehicle.position = center;
-                        newVehicle.missingFrames = 0;
-
+                        VehicleTracker newVehicle{box, center, 0};
                         vehicles[nextId] = newVehicle;
                         updated[nextId] = true;
                         nextId++;
@@ -103,54 +101,42 @@ void App::run(const string &filename, const string &modelConfig,
                 }
 
                 // Remove vehicles not found in this frame
-                vector<int> toRemove;
-                for (auto &[id, vehicle] : vehicles)
+                for (auto it = vehicles.begin(); it != vehicles.end();)
                 {
-                    if (updated.find(id) == updated.end())
+                    if (updated.find(it->first) == updated.end())
                     {
-                        vehicle.missingFrames++;
-                        if (vehicle.missingFrames > 5)
+                        it->second.missingFrames++;
+                        if (it->second.missingFrames > 5)
                         {
-                            toRemove.push_back(id);
+                            it = vehicles.erase(it);
                         }
-                    }
-                }
-
-                for (int id : toRemove)
-                {
-                    vehicles.erase(id);
-                }
-            }
-
-            // Draw reference points and horizontal lines - thin style
-            for (size_t i = 0; i < referenceLines.size(); i++)
-            {
-                line(frame, Point(0, referenceLines[i].y),
-                     Point(frame.cols, referenceLines[i].y),
-                     Scalar(0, 255, 0), 1);
-            }
-
-            for (const auto &[id, vehicle] : vehicles)
-            {
-                rectangle(frame, vehicle.bbox, Scalar(0, 255, 0), 1);
-                string label;
-
-                if (speedEstimator.hasSpeed(id))
-                {
-                    double speed = speedEstimator.getSpeed(id);
-                    if (speed > 0)
-                    {
-                        label = to_string(int(speed)) + " km/h";
+                        else
+                        {
+                            ++it;
+                        }
                     }
                     else
                     {
-                        label = "-- km/h";
+                        ++it;
                     }
                 }
-                else
-                {
-                    label = "-- km/h";
-                }
+            }
+
+            // Draw reference lines
+            for (const auto& linePoint : referenceLines)
+            {
+                line(frame, Point(0, linePoint.y),
+                     Point(frame.cols, linePoint.y),
+                     Scalar(0, 255, 0), 1);
+            }
+
+            // Draw vehicle bounding boxes and speeds
+            for (const auto &[id, vehicle] : vehicles)
+            {
+                rectangle(frame, vehicle.bbox, Scalar(0, 255, 0), 1);
+                
+                string label = speedEstimator.hasSpeed(id) ? 
+                    to_string(int(speedEstimator.getSpeed(id))) + " km/h" : "-- km/h";
 
                 putText(frame, label,
                         Point(vehicle.bbox.x + 5, vehicle.bbox.y - 5),
@@ -160,7 +146,7 @@ void App::run(const string &filename, const string &modelConfig,
             imshow("Vehicle Speed Tracking", frame);
             videoHandler.writeFrame(frame);
 
-            if (waitKey(1) == 27)
+            if (waitKey(1) == 27)  // ESC key
                 break;
         }
     }

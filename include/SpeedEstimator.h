@@ -16,12 +16,10 @@ private:
         bool crossedSecondLine;
         int frameAtSecondLine;
         double speed;
-        cv::Point2f lastPosition; // Store last position to detect line crossings
+        cv::Point2f lastPosition;
     };
     
     std::map<int, VehicleData> vehicles;
-    
-    bool hasVehicleCrossedLine(const cv::Point2f& pos, const cv::Point2f& linePoint, bool isVertical);
 
 public:
     SpeedEstimator(double frameRate, const std::vector<cv::Point2f>& referenceLines);

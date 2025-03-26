@@ -15,9 +15,6 @@ VideoHandler::VideoHandler(const string& filename) {
     frameHeight = video.get(CAP_PROP_FRAME_HEIGHT);
     double fps = video.get(CAP_PROP_FPS);
     
-    // Use the same FPS as the input video for the output
-    cout << "Input video FPS: " << fps << endl;
-    
     // Open output video with the same frame rate as input
     output.open("output.avi", VideoWriter::fourcc('M', 'J', 'P', 'G'), fps, Size(frameWidth, frameHeight));
     
