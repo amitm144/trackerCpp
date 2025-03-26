@@ -1,132 +1,74 @@
 #include "SpeedEstimator.h"
 #include <iostream>
-#include <cmath>
 
 using namespace cv;
 using namespace std;
 
-SpeedEstimator::SpeedEstimator(double frameRate, const std::vector<Point2f>& roadPoints) {
+SpeedEstimator::SpeedEstimator(double frameRate, const vector<Point2f>& referenceLines) {
     fps = frameRate;
-    
-    // Store the road points for reference
-    if (roadPoints.size() == 4) {
-        this->roadPoints = roadPoints;
-    } else {
-        cerr << "Warning: Invalid road points. Using defaults." << endl;
-        // Default road points if none provided
-        this->roadPoints = {
-            Point2f(100, 100), Point2f(500, 100),
-            Point2f(500, 400), Point2f(100, 400)
-        };
-    }
-    
-    // Calculate real-world distances
-    // Assuming standard lane width of 3.5 meters for top of quadrilateral
-    double roadWidthMeters = 3.5;
-    
-    // Calculate the width of the top of the road in pixels
-    double topWidthPixels = norm(roadPoints[0] - roadPoints[1]);
-    
-    // Calculate scaling factor for top of the road
-    topMetersPerPixel = roadWidthMeters / topWidthPixels;
-    
-    // Calculate the width of the bottom of the road in pixels
-    double bottomWidthPixels = norm(roadPoints[3] - roadPoints[2]);
-    
-    // Assuming bottom width represents same 3.5m lane
-    bottomMetersPerPixel = roadWidthMeters / bottomWidthPixels;
-    
-    // Initialize tracking parameters
-    lastFrameTime = 0.0;
-    referencePoints = {};
-    
-    cout << "Speed Estimator initialized:" << endl;
-    cout << "  - Frame rate: " << fps << " fps" << endl;
-    cout << "  - Top meters per pixel: " << topMetersPerPixel << endl;
-    cout << "  - Bottom meters per pixel: " << bottomMetersPerPixel << endl;
+    referenceDistance = 21.0; // 21 meters between lines
+    this->referenceLines = referenceLines;
+
 }
 
-double SpeedEstimator::calculateSpeed(const Rect& bbox) {
-    Point2f center(bbox.x + bbox.width/2.0f, bbox.y + bbox.height/2.0f);
-    double currentTime = static_cast<double>(getTickCount()) / getTickFrequency();
-    
-    // Calculate the vertical position ratio (0 at top, 1 at bottom of road)
-    double yRatio = calculateVerticalPositionRatio(center);
-    
-    // Interpolate meters per pixel based on vertical position
-    double currentMetersPerPixel = topMetersPerPixel + 
-                                   yRatio * (bottomMetersPerPixel - topMetersPerPixel);
-    
-    // If this is a new vehicle, just store its position and return a default speed
-    if (referencePoints.empty() || lastFrameTime == 0.0) {
-        referencePoints.push_back(center);
-        lastPositions.push_back(center);
-        lastFrameTime = currentTime;
-        lastMetersPerPixel = currentMetersPerPixel;
-        return 0.0; // No speed for first frame
-    }
-    
-    // Find the closest reference point
-    int closestIdx = -1;
-    double minDist = 100.0; // Maximum pixel distance to match
-    
-    for (size_t i = 0; i < referencePoints.size(); i++) {
-        double dist = norm(center - referencePoints[i]);
-        if (dist < minDist) {
-            minDist = dist;
-            closestIdx = i;
-        }
-    }
-    
-    double speed = 0.0;
-    
-    if (closestIdx >= 0) {
-        // Update the reference point
-        Point2f prevPos = lastPositions[closestIdx];
-        lastPositions[closestIdx] = center;
-        referencePoints[closestIdx] = center;
-        
-        // Calculate time difference in seconds
-        double timeDiff = currentTime - lastFrameTime;
-        
-        if (timeDiff > 0.001) { // Ensure we don't divide by very small values
-            // Calculate real-world distance moved in meters
-            double pixelDistance = norm(center - prevPos);
-            double distanceMeters = pixelDistance * currentMetersPerPixel;
-            
-            // Calculate speed in km/h
-            speed = (distanceMeters / timeDiff) * 3.6; // m/s to km/h
-            
-            // Apply some constraints for realism
-            speed = std::max(0.0, speed);
-            speed = std::min(200.0, speed); // Cap at reasonable maximum
-        }
-    } else {
-        // This is a new vehicle
-        referencePoints.push_back(center);
-        lastPositions.push_back(center);
-    }
-    
-    // Update the last frame time
-    lastFrameTime = currentTime;
-    lastMetersPerPixel = currentMetersPerPixel;
-    
-    return speed;
+bool SpeedEstimator::hasVehicleCrossedLine(const Point2f& pos, const Point2f& linePoint, bool isVertical) {
+    return (pos.y - linePoint.y) * (vehicles[0].lastPosition.y - linePoint.y) <= 0;
 }
 
-double SpeedEstimator::calculateVerticalPositionRatio(const Point2f& point) {
-    // This function calculates where a point falls vertically within the road quadrilateral
-    // Returns a value from 0 (at top of road) to 1 (at bottom of road)
+void SpeedEstimator::processVehicle(int id, const Point2f& position, int currentFrame) {
+    // Create vehicle entry if it doesn't exist
+    if (vehicles.find(id) == vehicles.end()) {
+        VehicleData data;
+        data.crossedFirstLine = false;
+        data.crossedSecondLine = false;
+        data.frameAtFirstLine = 0;
+        data.frameAtSecondLine = 0;
+        data.speed = 0.0;
+        data.lastPosition = position; // Initialize last position
+        vehicles[id] = data;
+        return; // Skip first frame for this vehicle
+    }
     
-    if (roadPoints.size() != 4) return 0.5; // Default to middle if no valid road points
+    // Get reference to vehicle data
+    VehicleData &vehicle = vehicles[id];
     
-    // Get the top and bottom y-coordinates of the road
-    double topY = (roadPoints[0].y + roadPoints[1].y) / 2.0;
-    double bottomY = (roadPoints[2].y + roadPoints[3].y) / 2.0;
+    // Check first line crossing
+    if (!vehicle.crossedFirstLine && 
+        (position.y - referenceLines[0].y) * (vehicle.lastPosition.y - referenceLines[0].y) <= 0) {
+        vehicle.crossedFirstLine = true;
+        vehicle.frameAtFirstLine = currentFrame;
+    }
     
-    // Calculate the ratio
-    double ratio = (point.y - topY) / (bottomY - topY);
+    // Check second line crossing
+    if (!vehicle.crossedSecondLine && 
+        (position.y - referenceLines[1].y) * (vehicle.lastPosition.y - referenceLines[1].y) <= 0) {
+        vehicle.crossedSecondLine = true;
+        vehicle.frameAtSecondLine = currentFrame;
+    }
     
-    // Constrain to the range [0, 1]
-    return std::max(0.0, std::min(1.0, ratio));
+    // Calculate speed if we have crossings for both lines
+    if (vehicle.crossedFirstLine && vehicle.crossedSecondLine && vehicle.speed == 0.0) {
+        int framesElapsed = abs(vehicle.frameAtSecondLine - vehicle.frameAtFirstLine);
+        
+        if (framesElapsed > 0) {
+            double timeSeconds = framesElapsed / fps;
+            vehicle.speed = (referenceDistance / timeSeconds) * 3.6;
+        }
+    }
+
+    vehicle.lastPosition = position;
+}
+
+
+double SpeedEstimator::getSpeed(int id) const {
+    auto it = vehicles.find(id);
+    if (it != vehicles.end() && it->second.crossedSecondLine) {
+        return it->second.speed;
+    }
+    return 0.0;
+}
+
+bool SpeedEstimator::hasSpeed(int id) const {
+    auto it = vehicles.find(id);
+    return (it != vehicles.end() && it->second.crossedSecondLine);
 }

@@ -2,28 +2,32 @@
 #define SPEEDESTIMATOR_H
 
 #include <opencv2/opencv.hpp>
-#include <vector>
-#include <string>
-#include <deque>
+#include <map>
 
 class SpeedEstimator {
 private:
     double fps;
-    double topMetersPerPixel;    // Conversion at top of the road
-    double bottomMetersPerPixel; // Conversion at bottom of the road
-    double lastMetersPerPixel;   // Last used conversion factor
-    double lastFrameTime;        // Timestamp of last processed frame
+    double referenceDistance; // 21 meters
+    std::vector<cv::Point2f> referenceLines;
     
-    std::vector<cv::Point2f> roadPoints;      // The road boundary points
-    std::vector<cv::Point2f> referencePoints; // Previous positions of tracked objects
-    std::vector<cv::Point2f> lastPositions;   // Last positions of tracked objects
+    struct VehicleData {
+        bool crossedFirstLine;
+        int frameAtFirstLine;
+        bool crossedSecondLine;
+        int frameAtSecondLine;
+        double speed;
+        cv::Point2f lastPosition; // Store last position to detect line crossings
+    };
     
-    // Calculate the relative vertical position within the road (0=top, 1=bottom)
-    double calculateVerticalPositionRatio(const cv::Point2f& point);
+    std::map<int, VehicleData> vehicles;
+    
+    bool hasVehicleCrossedLine(const cv::Point2f& pos, const cv::Point2f& linePoint, bool isVertical);
 
 public:
-    SpeedEstimator(double frameRate, const std::vector<cv::Point2f>& roadPoints);
-    double calculateSpeed(const cv::Rect& bbox);
+    SpeedEstimator(double frameRate, const std::vector<cv::Point2f>& referenceLines);
+    void processVehicle(int id, const cv::Point2f& position, int currentFrame);
+    double getSpeed(int id) const;
+    bool hasSpeed(int id) const;
 };
 
 #endif

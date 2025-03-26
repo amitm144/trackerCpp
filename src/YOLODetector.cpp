@@ -8,23 +8,10 @@ using namespace std;
 YOLODetector::YOLODetector(const string &modelConfig, const string &modelWeights, const string &classFile)
 {
     net = dnn::readNetFromDarknet(modelConfig, modelWeights);
-    if (net.empty())
-    {
-        throw runtime_error("Error: Failed to load YOLO model!");
-    }
-
-    // Enable GPU acceleration if CUDA is available
-    if (cv::cuda::getCudaEnabledDeviceCount() > 0) {
-        net.setPreferableBackend(dnn::DNN_BACKEND_CUDA);
-        net.setPreferableTarget(dnn::DNN_TARGET_CUDA);
-    } else {
-        net.setPreferableBackend(dnn::DNN_BACKEND_OPENCV);
-        net.setPreferableTarget(dnn::DNN_TARGET_CPU);
-    }
-
+    net.setPreferableBackend(dnn::DNN_BACKEND_OPENCV);
+    net.setPreferableTarget(dnn::DNN_TARGET_CPU);
     loadClassNames(classFile);
 }
-
 
 void YOLODetector::loadClassNames(const string &classFile)
 {
@@ -75,8 +62,8 @@ vector<pair<Rect, string>> YOLODetector::postprocess(const Mat &frame, const vec
     vector<int> classIds;
     vector<float> confidences;
 
-    const float CONFIDENCE_THRESHOLD = 0.5; 
-    const float NMS_THRESHOLD = 0.4;       
+    const float CONFIDENCE_THRESHOLD = 0.5;
+    const float NMS_THRESHOLD = 0.4;
 
     for (const auto &output : outputs)
     {
@@ -95,7 +82,7 @@ vector<pair<Rect, string>> YOLODetector::postprocess(const Mat &frame, const vec
                     continue;
                 string class_name = classNames[classId];
 
-                if (class_name == "car" || class_name == "truck" || class_name == "bus" )
+                if (class_name == "car" || class_name == "truck" || class_name == "bus")
                 {
 
                     int centerX = static_cast<int>(output.at<float>(i, 0) * frame.cols);

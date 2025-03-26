@@ -3,8 +3,10 @@
 #include <vector>
 
 int main() {
+    // Only select reference lines (21m apart)
+    std::vector<cv::Point2f> referenceLines = RoadSelector::selectReferenceLines("videos/road.mp4");
+    
     App app;
-    std::vector<cv::Point2f> roadPoints = RoadSelector::selectRoadPoints("videos/road.mp4");
-    app.run("videos/road.mp4", "data/yolov4.cfg", "data/yolov4.weights", "data/coco.names", roadPoints);
+    app.run("videos/road.mp4", "data/yolov4.cfg", "data/yolov4.weights", "data/coco.names", referenceLines);
     return 0;
 }

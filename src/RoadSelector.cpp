@@ -5,66 +5,39 @@ using namespace cv;
 using namespace std;
 
 // Global variables for point selection
-vector<Point2f> selectedPoints;
+vector<Point2f> referenceLines;
 Mat displayFrame;
-const string windowName = "Select Road Points";
-
-// Point selection order labels
-const vector<string> pointLabels = {
-    "Top-Left", "Top-Right", "Bottom-Right", "Bottom-Left"
-};
+const string windowName = "Select Reference Lines (21m apart)";
 
 void mouseCallback(int event, int x, int y, int flags, void* userdata) {
-    // Clone the original frame for drawing
     Mat temp = displayFrame.clone();
     
-    // Draw existing points and lines connecting them
-    for (size_t i = 0; i < selectedPoints.size(); i++) {
-        // Draw point
-        circle(temp, selectedPoints[i], 5, Scalar(0, 0, 255), -1);
-        // Add label
-        putText(temp, pointLabels[i], selectedPoints[i] + Point2f(10, 10), 
-                FONT_HERSHEY_SIMPLEX,
-                0.5, Scalar(0, 0, 255), 2);
-        
-        // Draw lines between points
-        if (i > 0) {
-            line(temp, selectedPoints[i-1], selectedPoints[i], Scalar(0, 255, 0), 2);
+    // Draw existing reference points and horizontal lines
+    if (!referenceLines.empty()) {
+        for (size_t i = 0; i < referenceLines.size(); i++) {            
+            // Draw horizontal line through this point
+            line(temp, Point(0, referenceLines[i].y), 
+                 Point(temp.cols, referenceLines[i].y), 
+                 Scalar(0, 255, 0), 1);
         }
-        // Close the polygon if all points are selected
-        if (i == 3) {
-            line(temp, selectedPoints[3], selectedPoints[0], Scalar(0, 255, 0), 2);
+        
+        // Show distance label between lines
+        if (referenceLines.size() == 2) {
+            Point2f midPoint(temp.cols/2, (referenceLines[0].y + referenceLines[1].y)/2);
+            putText(temp, "21m", midPoint, FONT_HERSHEY_SIMPLEX, 0.7, Scalar(0, 255, 0), 1);
         }
     }
     
     // Handle click event
-    if (event == EVENT_LBUTTONDOWN && selectedPoints.size() < 4) {
-        selectedPoints.push_back(Point2f(x, y));
-        cout << "Point " << pointLabels[selectedPoints.size()-1] 
-             << " selected: (" << x << ", " << y << ")" << endl;
-        
-        // Add the new point to the display
-        circle(temp, Point2f(x, y), 5, Scalar(0, 0, 255), -1);
-        putText(temp, pointLabels[selectedPoints.size()-1], 
-                Point2f(x, y) + Point2f(10, 10), 
-                FONT_HERSHEY_SIMPLEX, 
-                0.5, Scalar(0, 0, 255), 2);
+    if (event == EVENT_LBUTTONDOWN && referenceLines.size() < 2) {
+        referenceLines.push_back(Point2f(x, y));
     }
-    
-    // Show instructions
-    string instructions;
-    if (selectedPoints.size() < 4) {
-        instructions = "Select " + pointLabels[selectedPoints.size()] + " point of the road";
-    } else {
-        instructions = "All points selected. Press any key to continue.";
-    }
-    putText(temp, instructions, Point(10, 30), FONT_HERSHEY_SIMPLEX, 0.6, Scalar(255, 255, 255), 2);
     
     imshow(windowName, temp);
 }
 
-vector<Point2f> RoadSelector::selectRoadPoints(const string& videoPath) {
-    selectedPoints.clear();  // Clear any previous points
+vector<Point2f> RoadSelector::selectReferenceLines(const string& videoPath) {
+    referenceLines.clear();
     
     VideoCapture cap(videoPath);
     if (!cap.isOpened()) {
@@ -81,37 +54,18 @@ vector<Point2f> RoadSelector::selectRoadPoints(const string& videoPath) {
     
     namedWindow(windowName);
     setMouseCallback(windowName, mouseCallback, NULL);
-
-    // Display instructions
-    putText(displayFrame, "Select Top-Left point of the road", 
-            Point(10, 30), FONT_HERSHEY_SIMPLEX, 0.6, Scalar(255, 255, 255), 2);
     imshow(windowName, displayFrame);
 
-    // Wait for all points to be selected
-    while (selectedPoints.size() < 4) {
+    // Wait for both points to be selected
+    while (referenceLines.size() < 2) {
         int key = waitKey(100);
         if (key == 27) { // ESC key
-            selectedPoints.clear();
+            referenceLines.clear();
             break;
         }
     }
     
-    // Show final selection and wait for user confirmation
-    if (selectedPoints.size() == 4) {
-        // Draw the complete quadrilateral
-        Mat finalView = displayFrame.clone();
-        for (size_t i = 0; i < 4; i++) {
-            circle(finalView, selectedPoints[i], 5, Scalar(0, 0, 255), -1);
-            putText(finalView, pointLabels[i], selectedPoints[i] + Point2f(10, 10), 
-                    FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 0, 255), 2);
-            line(finalView, selectedPoints[i], selectedPoints[(i+1)%4], Scalar(0, 255, 0), 2);
-        }
-        putText(finalView, "Points selected. Press any key to continue.", 
-                Point(10, 30), FONT_HERSHEY_SIMPLEX, 0.6, Scalar(255, 255, 255), 2);
-        imshow(windowName, finalView);
-        waitKey(0);
-    }
-
+    waitKey(0);
     destroyWindow(windowName);
-    return selectedPoints;
+    return referenceLines;
 }
