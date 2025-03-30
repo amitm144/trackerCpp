@@ -7,7 +7,7 @@ using namespace std;
 // Global variables for point selection
 vector<Point2f> referenceLines;
 Mat displayFrame;
-const string windowName = "Select Reference Lines (21m apart)";
+const string windowName = "Select Reference Lines (15m apart)";
 
 void mouseCallback(int event, int x, int y, int flags, void* userdata) {
     Mat temp = displayFrame.clone();
@@ -23,7 +23,7 @@ void mouseCallback(int event, int x, int y, int flags, void* userdata) {
     // Show distance label between lines
     if (referenceLines.size() == 2) {
         Point2f midPoint(temp.cols/2, (referenceLines[0].y + referenceLines[1].y)/2);
-        putText(temp, "21m", midPoint, FONT_HERSHEY_SIMPLEX, 0.7, Scalar(0, 255, 0), 1);
+        putText(temp, "15m", midPoint, FONT_HERSHEY_SIMPLEX, 0.7, Scalar(0, 255, 0), 1);
     }
     
     // Handle click event

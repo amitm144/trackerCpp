@@ -3,7 +3,7 @@
 #include <vector>
 
 int main() {
-    // Only select reference lines (21m apart)
+    // Only select reference lines (15m apart)
     std::vector<cv::Point2f> referenceLines = RoadSelector::selectReferenceLines("videos/road.mp4");
     
     App app;

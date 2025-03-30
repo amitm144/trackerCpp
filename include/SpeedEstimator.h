@@ -7,7 +7,7 @@
 class SpeedEstimator {
 private:
     double fps;
-    double referenceDistance; // 21 meters
+    double referenceDistance; // 15 meters
     std::vector<cv::Point2f> referenceLines;
     
     struct VehicleData {

@@ -5,7 +5,7 @@ using namespace std;
 
 SpeedEstimator::SpeedEstimator(double frameRate, const vector<Point2f>& referenceLines) {
     fps = frameRate;
-    referenceDistance = 21.0; // 21 meters between lines
+    referenceDistance = 15.0; // 15 meters between lines
     this->referenceLines = referenceLines;
 }
 

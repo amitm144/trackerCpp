@@ -6,7 +6,7 @@
 
 class RoadSelector {
 public:
-    // Only select two reference lines that are 21m apart
+    // Only select two reference lines that are 15m apart
     static std::vector<cv::Point2f> selectReferenceLines(const std::string& videoPath);
 };
 
