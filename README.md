@@ -32,6 +32,35 @@ trackerCpp/
 └── ...
 ```
 
+## Test Video
+
+For testing the application, use this video:
+https://www.youtube.com/watch?v=wqctLW0Hb_0&t=1s
+
+1. Download the video
+2. Rename it to `road.mp4`
+3. Create a `videos` folder and place the file there:
+```sh
+mkdir -p videos
+# Place road.mp4 in the videos folder
+```
+
+Your updated project structure will look like:
+```
+trackerCpp/
+│
+├── yolo_models/
+│   ├── coco.names
+│   ├── yolov4.cfg
+│   └── yolov4.weights
+│
+├── videos/
+│   └── road.mp4
+│
+└── ...
+```
+
+
 ## Build Configuration
 
 This project uses the following VSCode tasks configuration for building with OpenCV:
