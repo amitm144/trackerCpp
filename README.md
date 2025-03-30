@@ -49,7 +49,7 @@ Your updated project structure will look like:
 ```
 trackerCpp/
 │
-├── yolo_models/
+├── data/
 │   ├── coco.names
 │   ├── yolov4.cfg
 │   └── yolov4.weights
