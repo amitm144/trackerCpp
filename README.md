@@ -1,5 +1,9 @@
 # Track and Calculate Vehicles Speed
 
+
+https://github.com/user-attachments/assets/94866aa2-a34a-4c60-b7db-e50dea28c6ed
+
+
 ## Installation Instructions
 
 To set up the necessary data files, please follow these steps:
@@ -61,9 +65,10 @@ The application calculates vehicle speed using the following approach:
 1. The program requires traffic videos where the road lines are vertical in the frame.
 2. Users must select two road lines that section the driving lane.
 3. Based on standard road markings:
-   - Average road line length is approximately 1.5 meters
-   - The gap between lines is typically 3 meters the line length
-   - For calculation purposes, the distance between selected lines is estimated at 9 meters (average for US and European roads)
+   - Average road line length is approximately 3 meters
+   - The gap between lines is typically 4.5 meters the line length
+   - For calculation purposes, the distance between selected lines is estimated at 15 meters (average for US and European roads)
+![צילום מסך 2025-03-30 ב-13 04 43](https://github.com/user-attachments/assets/2cc106e3-42ac-46d4-986e-922a861a5d32)
 
 ### Calculation Method:
 1. The tracker detects when a vehicle crosses the first line (start time)
