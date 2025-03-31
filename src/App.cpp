@@ -1,7 +1,6 @@
 #include "App.h"
+#include "ObjectTracker.h"
 #include <iostream>
-#include <map>
-#include <algorithm>
 
 using namespace cv;
 using namespace std;
@@ -20,16 +19,9 @@ void App::run(const string &filename, const string &modelConfig,
         YOLODetector detector(modelConfig, modelWeights, classFile);
         SpeedEstimator speedEstimator(frameRate, referenceLines);
 
-        // Vehicle tracking data structure
-        struct VehicleTracker
-        {
-            Rect bbox;
-            Point2f position;
-            int missingFrames;
-        };
-
-        map<int, VehicleTracker> vehicles;
-        int nextId = 0;
+        // Initialize object tracker with IOU threshold of 0.3 and max missing frames of 5
+        ObjectTracker tracker(0.3, 5);
+        
         int frameCount = 0;
         constexpr int FRAME_SKIP = 2;
 
@@ -40,84 +32,24 @@ void App::run(const string &filename, const string &modelConfig,
                 continue;
                 
             frameCount++;
+            tracker.incrementFrameCount();
 
-            // Only process every FRAME_SKIP frames
             if (frameCount % FRAME_SKIP == 0)
             {
                 // Detect vehicles in the frame
                 vector<pair<Rect, string>> detections = detector.detectVehicles(frame);
 
-                // Update tracked vehicles
-                map<int, bool> updated;
-
-                for (const auto &detection : detections)
+                // Update tracked objects with new detections
+                tracker.update(detections);
+                
+                // Process tracked objects for speed estimation
+                const auto& trackedObjects = tracker.getAllObjects();
+                for (const auto& [id, _] : trackedObjects)
                 {
-                    const Rect& box = detection.first;
-
-                    // Find closest match based on IOU
-                    int bestId = -1;
-                    double bestIOU = 0.3;
-
-                    for (const auto &[id, vehicle] : vehicles)
+                    Point2f position;
+                    if (tracker.getObjectPosition(id, position))
                     {
-                        if (updated.find(id) != updated.end())
-                            continue;
-
-                        Rect intersection = box & vehicle.bbox;
-                        if (intersection.empty())
-                            continue;
-
-                        double iou = intersection.area() /
-                                     (double)(box.area() + vehicle.bbox.area() - intersection.area());
-
-                        if (iou > bestIOU)
-                        {
-                            bestIOU = iou;
-                            bestId = id;
-                        }
-                    }
-
-                    // Calculate center position
-                    Point2f center(box.x + box.width / 2.0f, box.y + box.height / 2.0f);
-
-                    // Update existing or create new
-                    if (bestId >= 0)
-                    {
-                        vehicles[bestId].bbox = box;
-                        vehicles[bestId].position = center;
-                        vehicles[bestId].missingFrames = 0;
-                        updated[bestId] = true;
-
-                        // Process for speed calculation
-                        speedEstimator.processVehicle(bestId, center, frameCount);
-                    }
-                    else
-                    {
-                        VehicleTracker newVehicle{box, center, 0};
-                        vehicles[nextId] = newVehicle;
-                        updated[nextId] = true;
-                        nextId++;
-                    }
-                }
-
-                // Remove vehicles not found in this frame
-                for (auto it = vehicles.begin(); it != vehicles.end();)
-                {
-                    if (updated.find(it->first) == updated.end())
-                    {
-                        it->second.missingFrames++;
-                        if (it->second.missingFrames > 5)
-                        {
-                            it = vehicles.erase(it);
-                        }
-                        else
-                        {
-                            ++it;
-                        }
-                    }
-                    else
-                    {
-                        ++it;
+                        speedEstimator.processVehicle(id, position, frameCount);
                     }
                 }
             }
@@ -130,18 +62,24 @@ void App::run(const string &filename, const string &modelConfig,
                      Scalar(0, 255, 0), 1);
             }
 
-            // Draw vehicle bounding boxes and speeds
-            for (const auto &[id, vehicle] : vehicles)
+            // Draw tracked objects
+            const auto& trackedObjects = tracker.getAllObjects();
+            for (const auto& [id, _] : trackedObjects)
             {
-                rectangle(frame, vehicle.bbox, Scalar(0, 255, 0), 1);
-                
-                string label = speedEstimator.hasSpeed(id) ? 
-                    to_string(int(speedEstimator.getSpeed(id))) + " km/h" : "-- km/h";
-
-                putText(frame, label,
-                        Point(vehicle.bbox.x + 5, vehicle.bbox.y - 5),
-                        FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 255, 255), 1);
+                Point2f position;
+                if (tracker.getObjectPosition(id, position))
+                {
+                    string speedLabel = speedEstimator.hasSpeed(id) ? 
+                        to_string(int(speedEstimator.getSpeed(id))) + " km/h" : "-- km/h";
+                    
+                    putText(frame, speedLabel,
+                            Point(position.x - 30, position.y - 15),
+                            FONT_HERSHEY_SIMPLEX, 0.5, Scalar(255, 255, 255), 1);
+                }
             }
+            
+            // Draw bounding boxes for all tracked objects
+            tracker.drawBoundingBoxes(frame, false);  // false = don't show class labels (just boxes)
 
             imshow("Vehicle Speed Tracking", frame);
             videoHandler.writeFrame(frame);
